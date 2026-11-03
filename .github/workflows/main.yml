@@ -1,0 +1,38 @@
+name: Build Kernel
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y bc bison build-essential clang cmake curl flex gcc-aarch64-linux-gnu git libelf-dev libssl-dev python3 zip
+
+      - name: Download Clang
+        run: git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --depth=1 clang-llvm
+
+      - name: Build
+        run: |
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CLANG_PATH=$(pwd)/clang-llvm/clang-r416183b/bin
+          export PATH=$CLANG_PATH:$PATH
+          export CC=clang
+          
+          # Copie seu arquivo de config para a pasta do source
+          cp Droidspaces_topaz_defconfig_FIXED arch/arm64/configs/gki_defconfig
+          
+          make gki_defconfig
+          make -j$(nproc) CC=clang
+          
+      - name: Upload Image
+        uses: actions/upload-artifact@v3
+        with:
+          name: kernel-image
+          path: arch/arm64/boot/Image
