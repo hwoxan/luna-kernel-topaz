@@ -18,15 +18,18 @@ jobs:
           export ARCH=arm64
           export SUBARCH=arm64
           
-          # 1. Base oficial GKI
+          # 1. Corrige erro de sintaxe no código da Xiaomi (Clang é estrito)
+          sed -i 's/#include <walt.h>/#include "walt.h"/' kernel/sched/walt/walt_halt.c
+          
+          # 2. Base oficial GKI
           make gki_defconfig
           
-          # 2. Mescla os drivers específicos da Xiaomi Topaz para evitar o Bootloop
+          # 3. Mescla drivers específicos da Xiaomi Topaz (EVITA BOOTLOOP)
           if [ -f arch/arm64/configs/vendor/topaz_GKI.config ]; then
             scripts/kconfig/merge_config.sh -m .config arch/arm64/configs/vendor/topaz_GKI.config
           fi
           
-          # 3. Injeta suporte total ao Droidspaces
+          # 4. Injeta suporte total ao Droidspaces
           scripts/config --file .config \
             --enable MACVLAN \
             --enable IP6_NF_NAT \
@@ -42,7 +45,7 @@ jobs:
             --disable DEBUG_INFO \
             --disable KASAN
           
-          # 4. Finaliza a configuração e compila
+          # 5. Finaliza config e compila com LLVM total
           make olddefconfig
           make -j$(nproc) LLVM=1 LLVM_IAS=1 CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi-
           
