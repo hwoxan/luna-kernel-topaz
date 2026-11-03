@@ -20,16 +20,20 @@ jobs:
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
-          export CROSS_COMPILE=aarch64-linux-gnu-
           export CLANG_PATH=$(pwd)/clang-llvm/clang-r416183b/bin
           export PATH=$CLANG_PATH:$PATH
-          export CC=clang
           
-          # Copie seu arquivo de config para a pasta do source
+          # Copie seu arquivo de config
           cp Droidspaces_topaz_defconfig_FIXED arch/arm64/configs/gki_defconfig
           
+          # Desative o BTF e outras opções de debug que exigem o pahole
+          scripts/config --file arch/arm64/configs/gki_defconfig \
+            --disable DEBUG_INFO_BTF \
+            --disable DEBUG_INFO \
+            --disable KASAN
+          
           make gki_defconfig
-          make -j$(nproc) CC=clang
+          make -j$(nproc) LLVM=1 LLVM_IAS=1 CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi-
           
       - name: Upload Image
         uses: actions/upload-artifact@v4
