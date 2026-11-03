@@ -18,27 +18,34 @@ jobs:
           export ARCH=arm64
           export SUBARCH=arm64
           
+          # Limpeza profunda
+          make clean
+          
           # Patches
           sed -i 's/#include <walt.h>/#include "walt.h"/' kernel/sched/walt/walt_halt.c
           sed -i 's|#include "./trace.h"|#include "trace.h"|' drivers/clk/qcom/clk-debug.c
           
+          # 1. Configuração base
           make gki_defconfig
           
+          # 2. Mescla drivers Xiaomi Topaz
           if [ -f arch/arm64/configs/vendor/topaz_GKI.config ]; then
             scripts/kconfig/merge_config.sh -m .config arch/arm64/configs/vendor/topaz_GKI.config
           fi
           
+          # 3. Configuração Droidspaces e desativação rigorosa de módulos problemáticos
           scripts/config --file .config \
             --enable MACVLAN --enable IP6_NF_NAT --enable IP6_NF_TARGET_MASQUERADE \
             --enable CFS_BANDWIDTH --enable CGROUP_PIDS --enable USER_NS \
             --enable PID_NS --enable TUN --enable FUSE_FS --enable OVERLAY_FS \
-            --disable DEBUG_INFO_BTF --disable DEBUG_INFO --disable KASAN --disable LTO_CLANG_FULL
+            --disable DEBUG_INFO_BTF --disable DEBUG_INFO --disable KASAN --disable LTO_CLANG_FULL \
+            --disable CONFIG_WLAN_VENDOR_REALTEK \
+            --disable CONFIG_WLAN_VENDOR_MEDIATEK
           
           make olddefconfig
           
-          # --- MUDANÇA: Build Verbose (V=1) e sem paralelismo (-j1) ---
-          # Isso garantirá que a última linha do log SEJA o erro real.
-          make V=1 LLVM=1 LLVM_IAS=1 \
+          # 4. Compilação
+          make LLVM=1 LLVM_IAS=1 \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             KCFLAGS="-Wno-implicit-function-declaration -Wno-strict-prototypes"
