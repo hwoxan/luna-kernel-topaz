@@ -7,6 +7,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v3
 
@@ -18,7 +19,7 @@ jobs:
           export ARCH=arm64
           export SUBARCH=arm64
           
-          # Limpeza profunda
+          # Limpeza
           make clean
           
           # Patches
@@ -33,7 +34,7 @@ jobs:
             scripts/kconfig/merge_config.sh -m .config arch/arm64/configs/vendor/topaz_GKI.config
           fi
           
-          # 3. Configuração Droidspaces e desativação rigorosa de módulos problemáticos
+          # 3. Configuração Droidspaces e desativação de módulos problemáticos
           scripts/config --file .config \
             --enable MACVLAN --enable IP6_NF_NAT --enable IP6_NF_TARGET_MASQUERADE \
             --enable CFS_BANDWIDTH --enable CGROUP_PIDS --enable USER_NS \
@@ -44,8 +45,8 @@ jobs:
           
           make olddefconfig
           
-          # 4. Compilação
-          make LLVM=1 LLVM_IAS=1 \
+          # 4. Compilação Verbose
+          make V=1 LLVM=1 LLVM_IAS=1 \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             KCFLAGS="-Wno-implicit-function-declaration -Wno-strict-prototypes"
