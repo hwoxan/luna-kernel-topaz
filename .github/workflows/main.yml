@@ -1,4 +1,4 @@
-name: Build Kernel
+name: Build Kernel LUNA Topaz
 on:
   push:
     branches: [ main ]
@@ -18,17 +18,32 @@ jobs:
           export ARCH=arm64
           export SUBARCH=arm64
           
-          # Copie seu arquivo de config
-          cp Droidspaces_topaz_defconfig_FIXED arch/arm64/configs/gki_defconfig
+          # 1. Base oficial GKI
+          make gki_defconfig
           
-          # Desative o BTF e outros debugs
-          scripts/config --file arch/arm64/configs/gki_defconfig \
+          # 2. Mescla os drivers específicos da Xiaomi Topaz para evitar o Bootloop
+          if [ -f arch/arm64/configs/vendor/topaz_GKI.config ]; then
+            scripts/kconfig/merge_config.sh -m .config arch/arm64/configs/vendor/topaz_GKI.config
+          fi
+          
+          # 3. Injeta suporte total ao Droidspaces
+          scripts/config --file .config \
+            --enable MACVLAN \
+            --enable IP6_NF_NAT \
+            --enable IP6_NF_TARGET_MASQUERADE \
+            --enable CFS_BANDWIDTH \
+            --enable CGROUP_PIDS \
+            --enable USER_NS \
+            --enable PID_NS \
+            --enable TUN \
+            --enable FUSE_FS \
+            --enable OVERLAY_FS \
             --disable DEBUG_INFO_BTF \
             --disable DEBUG_INFO \
             --disable KASAN
           
-          make gki_defconfig
-          # LLVM=1 usará o clang/lld instalado pelo apt
+          # 4. Finaliza a configuração e compila
+          make olddefconfig
           make -j$(nproc) LLVM=1 LLVM_IAS=1 CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi-
           
       - name: Upload Image
