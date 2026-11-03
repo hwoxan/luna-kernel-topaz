@@ -18,18 +18,18 @@ jobs:
           export ARCH=arm64
           export SUBARCH=arm64
           
-          # 1. Corrige erro de sintaxe no código da Xiaomi (Clang é estrito)
+          # 1. Correções de código (Walt e drivers de rede)
           sed -i 's/#include <walt.h>/#include "walt.h"/' kernel/sched/walt/walt_halt.c
           
-          # 2. Base oficial GKI
+          # 2. Configuração Base
           make gki_defconfig
           
-          # 3. Mescla drivers específicos da Xiaomi Topaz (EVITA BOOTLOOP)
+          # 3. Mescla drivers Xiaomi Topaz
           if [ -f arch/arm64/configs/vendor/topaz_GKI.config ]; then
             scripts/kconfig/merge_config.sh -m .config arch/arm64/configs/vendor/topaz_GKI.config
           fi
           
-          # 4. Injeta suporte total ao Droidspaces
+          # 4. Flags Droidspaces e desativação de Debug/BTF
           scripts/config --file .config \
             --enable MACVLAN \
             --enable IP6_NF_NAT \
@@ -43,11 +43,16 @@ jobs:
             --enable OVERLAY_FS \
             --disable DEBUG_INFO_BTF \
             --disable DEBUG_INFO \
-            --disable KASAN
+            --disable KASAN \
+            --disable LTO_CLANG_FULL
           
-          # 5. Finaliza config e compila com LLVM total
           make olddefconfig
-          make -j$(nproc) LLVM=1 LLVM_IAS=1 CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+          
+          # 5. Compilação com KCFLAGS para ignorar erros menores de sintaxe
+          make -j$(nproc) LLVM=1 LLVM_IAS=1 \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            KCFLAGS="-Wno-implicit-function-declaration -Wno-strict-prototypes"
           
       - name: Upload Image
         uses: actions/upload-artifact@v4
