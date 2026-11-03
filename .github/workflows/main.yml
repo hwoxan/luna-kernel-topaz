@@ -18,24 +18,38 @@ jobs:
           export ARCH=arm64
           export SUBARCH=arm64
           
+          # --- PATCHES DE CÓDIGO PARA COMPATIBILIDADE ---
           sed -i 's/#include <walt.h>/#include "walt.h"/' kernel/sched/walt/walt_halt.c
+          sed -i 's|#include "./trace.h"|#include "trace.h"|' drivers/clk/qcom/clk-debug.c
           
+          # 1. Base oficial GKI
           make gki_defconfig
           
+          # 2. Mescla drivers específicos da Xiaomi Topaz
           if [ -f arch/arm64/configs/vendor/topaz_GKI.config ]; then
             scripts/kconfig/merge_config.sh -m .config arch/arm64/configs/vendor/topaz_GKI.config
           fi
           
+          # 3. Injeta suporte Droidspaces e desativa Debugs que causam erro
           scripts/config --file .config \
-            --enable MACVLAN --enable IP6_NF_NAT --enable IP6_NF_TARGET_MASQUERADE \
-            --enable CFS_BANDWIDTH --enable CGROUP_PIDS --enable USER_NS \
-            --enable PID_NS --enable TUN --enable FUSE_FS --enable OVERLAY_FS \
-            --disable DEBUG_INFO_BTF --disable DEBUG_INFO --disable KASAN --disable LTO_CLANG_FULL
+            --enable MACVLAN \
+            --enable IP6_NF_NAT \
+            --enable IP6_NF_TARGET_MASQUERADE \
+            --enable CFS_BANDWIDTH \
+            --enable CGROUP_PIDS \
+            --enable USER_NS \
+            --enable PID_NS \
+            --enable TUN \
+            --enable FUSE_FS \
+            --enable OVERLAY_FS \
+            --disable DEBUG_INFO_BTF \
+            --disable DEBUG_INFO \
+            --disable KASAN \
+            --disable LTO_CLANG_FULL
           
+          # 4. Finaliza config e compila
           make olddefconfig
-          
-          # BUILD VERBOSE E SINGLE THREAD para capturar o erro exato
-          make V=1 LLVM=1 LLVM_IAS=1 \
+          make -j$(nproc) LLVM=1 LLVM_IAS=1 \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             KCFLAGS="-Wno-implicit-function-declaration -Wno-strict-prototypes"
